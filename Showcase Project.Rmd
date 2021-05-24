@@ -1,7 +1,7 @@
 ---
-title: "Challenge2"
+title: "Showcase Challenge"
 author: "Evan Cornelius"
-date: "3/11/2021"
+date: "5/24/2021"
 output:
   html_document: default
   pdf_document: default
@@ -11,9 +11,9 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 
-#Lookup directory. Input into setwd()
+#remove the comments below to lookup your directory. Input the results into setwd() to set directory. 
 #getwd()
-setwd("C:/Users/evanc/OneDrive/Desktop/UCSD CLASSES/Second year/Winter Qtr 2021/Poli 175/Prog")
+#setwd("")
 
 library(labeling)
 library(rmarkdown)
