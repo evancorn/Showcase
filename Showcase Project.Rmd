@@ -1,0 +1,279 @@
+---
+title: "Challenge2"
+author: "Evan Cornelius"
+date: "3/11/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+
+#Lookup directory. Input into setwd()
+#getwd()
+setwd("C:/Users/evanc/OneDrive/Desktop/UCSD CLASSES/Second year/Winter Qtr 2021/Poli 175/Prog")
+
+library(labeling)
+library(rmarkdown)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(lmtest)
+library(MLmetrics)
+library(tm)
+library(stringr)
+library(stm)
+library(tm)
+library(SnowballC)
+library(Matrix)
+library(rworldmap)
+```
+
+##Coding Challenge 2: Analyzing Prevlaence of Topics in Hillary Clinton's Emails Over Time, and Sentiment of Hillary Clinton's Emails Across Regime Types:
+
+
+Firstly, we load in the preprocessed data and the positive and negative words dictionaries. 
+```{r preprocessed}
+Clintondat<- read.csv("Clinton.csv")
+pos_words <- read.delim("positive-words.txt", header = F, stringsAsFactors = F)[,1]
+neg_words <- read.delim("negative-words.txt", header = F, stringsAsFactors = F)[,1]
+```
+
+
+Subsequently, we remove stop words from the preprocessed data utilizing a modified stop-words list and regular expressions. The data frame is then converted into a matrix so as to permit us to fit a structural topic model. 
+```{r data cleaning, results="hide"}
+stopwords<- read.csv("stop-word-list-6.csv")
+xvector<- grep(pattern = "X[0:99]*", x = colnames(Clintondat), value = T)
+Clintondat<- Clintondat[10:3009]
+stopwords<- colnames(stopwords)
+stopwords<- c(stopwords, xvector)
+stopwords
+Clintondat<- Clintondat[ , !names(Clintondat) %in% stopwords]
+Clintondat_dtm <- as.matrix(Clintondat)
+X <- Matrix(Clintondat_dtm)
+```
+
+We then fit the structural topic model with K=30. Other models are not included and fit for convenience, but output will only be shown for k=30, as we rigorously evaluated topics by their interpretability prior to choosing k=30. 
+```{r topic model, results="hide"}
+topmod_fit3 <- stm(documents = X, K = 30, seed = 92253)
+labelTopics(topmod_fit3, frexweight= .9)
+```
+
+Upon looking at these topics, the vast majority seem to pertain to foreign affairs, domestic political events, and logistics. These are precisely what we would expect in the emails of the acting secretary of state. Nevertheless, we want to understand how the prevalence of these topics varies over time. Thus, we will utilize an estimated effects plot to visualize topic prevalence before 2011, and after 2012. Firstly, we utilize regular expressions to pre-process the dates in the metadata, and subsequently, we remove observations that do not have dates. 
+```{r date-cleaning, results="hide"}
+Clintondat3<- read.csv("Clinton.csv")
+meta2<- Clintondat3[1:9]
+meta2$DateSent
+meta2$DateSent <- gsub(pattern = "[-]", replacement = "", x = meta2$DateSent)
+meta2$DateSent <- gsub(pattern = "[:]", replacement = "", x = meta2$DateSent)
+meta2$DateSent <- gsub(pattern = "[+]", replacement = "", x = meta2$DateSent)
+meta2$DateSent <- gsub(pattern = "[T]", replacement = "", x = meta2$DateSent)
+meta2$DateSent <- gsub(pattern = "2008[0-9]*", replacement = "2008", x = meta2$DateSent)
+meta2$DateSent <- gsub(pattern = "2009[0-9]*", replacement = "2009", x = meta2$DateSent)
+meta2$DateSent <- gsub(pattern = "2010[0-9]*", replacement = "2010", x = meta2$DateSent)
+meta2$DateSent <- gsub(pattern = "2011[0-9]*", replacement = "2011", x = meta2$DateSent)
+meta2$DateSent <- gsub(pattern = "2012[0-9]*", replacement = "2012", x = meta2$DateSent)
+meta2$DateSent <- gsub(pattern = "2013[0-9]*", replacement = "2013", x = meta2$DateSent)
+meta2$DateSent <- gsub(pattern = "2014[0-9]*", replacement = "2014", x = meta2$DateSent)
+meta2$DateSent <- gsub(pattern = "2015[0-9]*", replacement = "2015", x = meta2$DateSent)
+meta2$DateSent<- as.numeric(meta2$DateSent)
+summary(meta2$DateSent)
+meta2$before2010<-0
+meta2$before2010[meta2$DateSent<= 2010]<-1
+meta2noNA<- subset(meta2, subset=(is.na(DateSent)==FALSE))
+```
+
+```{r additional-cleaning, results="hide"} 
+Clintondat3<- read.csv("Clinton.csv")
+length(Clintondat3$DateSent)
+Clintondat3$DateSent <- gsub(pattern = "[-]", replacement = "", x = Clintondat3$DateSent)
+Clintondat3$DateSent <- gsub(pattern = "[:]", replacement = "", x = Clintondat3$DateSent)
+Clintondat3$DateSent <- gsub(pattern = "[+]", replacement = "", x = Clintondat3$DateSent)
+Clintondat3$DateSent <- gsub(pattern = "[T]", replacement = "", x = Clintondat3$DateSent)
+Clintondat3$DateSent <- gsub(pattern = "2008[0-9]*", replacement = "2008", x = Clintondat3$DateSent)
+Clintondat3$DateSent <- gsub(pattern = "2009[0-9]*", replacement = "2009", x = Clintondat3$DateSent)
+Clintondat3$DateSent <- gsub(pattern = "2010[0-9]*", replacement = "2010", x = Clintondat3$DateSent)
+Clintondat3$DateSent <- gsub(pattern = "2011[0-9]*", replacement = "2011", x = Clintondat3$DateSent)
+Clintondat3$DateSent <- gsub(pattern = "2012[0-9]*", replacement = "2012", x = Clintondat3$DateSent)
+Clintondat3$DateSent <- gsub(pattern = "2013[0-9]*", replacement = "2013", x = Clintondat3$DateSent)
+Clintondat3$DateSent <- gsub(pattern = "2014[0-9]*", replacement = "2014", x = Clintondat3$DateSent)
+Clintondat3$DateSent <- gsub(pattern = "2015[0-9]*", replacement = "2015", x = Clintondat3$DateSent)
+Clintondat3$DateSent<- as.numeric(Clintondat3$DateSent)
+summary(Clintondat$DateSent)
+Clintondat$before2011<-0
+Clintondat$before2011[Clintondat$DateSent<= 2010]<-1
+ClintondatnoNA<- subset(Clintondat3, subset=(is.na(DateSent)==FALSE))
+ClintondatnoNA<- ClintondatnoNA[10:3009]
+stopwords<- read.csv("stop-word-list-6.csv")
+stopwords<- colnames(stopwords)
+xvector<- grep(pattern = "X[0:99]*", x = colnames(ClintondatnoNA), value = T)
+stopwords<- c(stopwords, xvector)
+stopwords
+ClintondatnoNA<- ClintondatnoNA[ , !names(ClintondatnoNA) %in% stopwords]
+Clintondat_dtm <- as.matrix(ClintondatnoNA)
+X <- Matrix(Clintondat_dtm)
+```
+
+```{r model1frex-visualization}
+topmod_fit3prev <- stm(documents=X , K = 30, 
+                   prevalence = ~ before2010, data = meta2noNA, seed = 92253)
+#meta2noNA$before2010
+Estimatedeffectmodel2 <- estimateEffect(1:30 ~ before2010, topmod_fit3prev, meta2noNA)
+frex <- as.data.frame(labelTopics(topmod_fit3prev, n=5)$frex)
+labels <- apply(frex, 1, function(x) paste(x, collapse=','))
+plot.estimateEffect(Estimatedeffectmodel2, 'before2010', covariate = "before2010", method="difference", cov.value1="0", cov.value2="1", labeltype = 'custom', custom.labels= labels,  width=80)
+```
+
+
+Moreover, we want to assess the sentiment of Hillary Clinton's emails across regime types. Given that she was the secretary of state, the sentiment expressed in her emails could potentially mirror United States relations with other nations. We will utilize the Reporters without borders world press freedom index as an indicator of the regime type of a given country. First, we provide a visualization for which countries are autocracies via this index. Moreover, we will utilize the reporters without borders data to identify which countries are in the dataset. 
+```{r sentiment analysis-visualization}
+PressfreedomIndex<- read.csv("PressFreedomIndex.csv")
+PressfreedomIndex$EN_country[PressfreedomIndex$Rank.2019>= 50]
+
+ClintonColname<- as.character(colnames(Clintondat))
+PressfreedomIndex$EN_country<- tolower(PressfreedomIndex$EN_country)
+for (i in 1:180){
+PressfreedomIndex$countryvec[i]<- PressfreedomIndex$EN_country[i] %in% ClintonColname
+}
+namevec<- PressfreedomIndex$EN_country[PressfreedomIndex$countryvec==TRUE]
+regimedat<- as.data.frame(namevec)
+scorevec<- PressfreedomIndex$Rank.2019[PressfreedomIndex$EN_country %in% namevec== TRUE]
+regimedat$scorevec<-scorevec
+
+#summary(scorevec)
+democvec<- regimedat$namevec[scorevec<=47]
+newdat<- subset(regimedat, subset=(scorevec< 111))
+newdat<- subset(newdat, subset =(scorevec> 47))
+mixedvec<- newdat$namevec
+autocracyvec<- regimedat$namevec[scorevec>= 111]
+regimedat$NAME<- regimedat$namevec
+
+#data(regimedat)
+sPDF1<- joinCountryData2Map(regimedat
+                             ,joinCode = "NAME"
+                             ,nameJoinColumn = "NAME")
+mapDevice() 
+mapCountryData(sPDF1
+               ,nameColumnToPlot='scorevec')
+
+regimedat$regtype[scorevec<= 47]<- "democracy"
+regimedat$regtype[scorevec> 47]<- "mixed"
+regimedat$regtype[scorevec>=111]<- "autocracy"
+
+autonamevec<- regimedat$NAME[regimedat$regtype== "autocracy"]
+mixedvec<- regimedat$NAME[regimedat$regtype== "mixed"]
+demonamevec<- regimedat$NAME[regimedat$regtype== "democracy"]
+```
+
+Subsequently, we will evaluate the positivity ratio by country for each nation in the data. 
+```{r visuals 3 and 4}
+Clintondat<- read.csv("Clinton.csv")
+pos_words <- read.delim("positive-words.txt", header = F, stringsAsFactors = F)[,1]
+neg_words <- read.delim("negative-words.txt", header = F, stringsAsFactors = F)[,1]
+stopwords<- read.csv("stop-word-list.csv")
+xvector<- grep(pattern = "X[0:99]*", x = colnames(Clintondat), value = T)
+
+Clintondat<- Clintondat[10:3009]
+stopwords<- colnames(stopwords)
+stopwords<- c(stopwords, xvector)
+Clintondat<- Clintondat[ , !names(Clintondat) %in% stopwords]
+Clintondat_dtm <- as.matrix(Clintondat)
+X <- Matrix(Clintondat_dtm)
+PressfreedomIndex<- read.csv("PressFreedomIndex.csv")
+colnames(PressfreedomIndex)
+ClintonColname<- as.character(colnames(Clintondat))
+PressfreedomIndex$EN_country<- tolower(PressfreedomIndex$EN_country)
+for (i in 1:180){
+    PressfreedomIndex$countryvec[i]<- PressfreedomIndex$EN_country[i] %in% ClintonColname
+}
+namevec<- PressfreedomIndex$EN_country[PressfreedomIndex$countryvec==TRUE]
+
+emailsbycountry<- NA
+sentimentbycountry2<- as.vector(NA)
+for (i in 1:44){
+  emailsbycountry<- subset(Clintondat, subset=(Clintondat[[namevec[i]]]> 0))
+  sentimentbycountry1<- sum(emailsbycountry[colnames(emailsbycountry) %in% pos_words== TRUE])/(sum(emailsbycountry[colnames(emailsbycountry) %in% pos_words== TRUE])+ sum(emailsbycountry[colnames(emailsbycountry) %in% neg_words== TRUE]))
+  sentimentbycountry2[i]<- sentimentbycountry1
+  rm(emailsbycountry, sentimentbycountry1)
+}
+
+regimedat$newsentvar<-sentimentbycountry2
+
+ggplot(data=regimedat, aes(x=reorder(namevec, -newsentvar), y=newsentvar, fill=regtype)) +
+  geom_bar(stat="identity")+xlab("Regime Type") + ylab("Positivity Ratio")+ ggtitle("Positivity Ratio for Emails Sent by Hillary Clinton by Regime type of Countries Mentioned")+
+  ylim(c(0,.81))+ theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+regimedat$regtype<- 0
+regimedat$regtype[scorevec<= 47]<- "democracy"
+regimedat$regtype[scorevec> 47]<- "mixed"
+regimedat$regtype[scorevec>=111]<- "autocracy"
+data(regimedat)
+regimedat$NAME<- regimedat$namevec
+sPDF2<- joinCountryData2Map(regimedat
+                            ,joinCode = "NAME"
+                            ,nameJoinColumn = "NAME")
+mapDevice() 
+mapCountryData(sPDF2
+               ,nameColumnToPlot='newsentvar')
+```
+
+Finally, we will visualize the average sentiment score by regime type. 
+```{r}
+namevec<- PressfreedomIndex$EN_country[PressfreedomIndex$countryvec==TRUE]
+emailsbycountry<- NA
+sentimentbycountry2<- as.vector(NA)
+regimedat$regtype[scorevec<= 47]<- "democracy"
+regimedat$regtype[scorevec> 47]<- "mixed"
+regimedat$regtype[scorevec>=111]<- "autocracy"
+autonamevec<- regimedat$NAME[regimedat$regtype== "autocracy"]
+mixedvec<- regimedat$NAME[regimedat$regtype== "mixed"]
+demonamevec<- regimedat$NAME[regimedat$regtype== "democracy"]
+emailsbyaut<-NA
+sentimentbyaut2<-NA
+for (i in 1:26){
+  emailsbyaut<- subset(Clintondat, subset=(Clintondat[[autonamevec[i]]]> 0))
+  sentimentbyaut1<- sum(emailsbyaut[colnames(emailsbyaut) %in% pos_words== TRUE])/(sum(emailsbyaut[colnames(emailsbyaut) %in% pos_words== TRUE])+ sum(emailsbyaut[colnames(emailsbyaut) %in% neg_words== TRUE]))
+  sentimentbyaut2[i]<- sentimentbyaut1
+  rm(emailsbyaut, sentimentbyaut1)
+}
+sentimentbyaut2
+
+mailsbymixed<-NA
+sentimentbymixed2<-NA
+for (i in 1:12){
+  emailsbymixed<- subset(Clintondat, subset=(Clintondat[[mixedvec[i]]]> 0))
+  sentimentbymixed1<- sum(emailsbymixed[colnames(emailsbymixed) %in% pos_words== TRUE])/(sum(emailsbymixed[colnames(emailsbymixed) %in% pos_words== TRUE])+ sum(emailsbymixed[colnames(emailsbymixed) %in% neg_words== TRUE]))
+  sentimentbymixed2[i]<- sentimentbymixed1
+  rm(emailsbymixed, sentimentbymixed1)
+}
+sentimentbymixed2
+
+mean(sentimentbymixed2)
+
+emailsbydem<-NA
+sentimentbydem2<-NA
+for (i in 1:6){
+  emailsbydem<- subset(Clintondat, subset=(Clintondat[[demonamevec[i]]]> 0))
+  sentimentbydem1<- sum(emailsbydem[colnames(emailsbydem) %in% pos_words== TRUE])/(sum(emailsbydem[colnames(emailsbydem) %in% pos_words== TRUE])+ sum(emailsbydem[colnames(emailsbydem) %in% neg_words== TRUE]))
+  sentimentbydem2[i]<- sentimentbydem1
+  rm(emailsbydem, sentimentbydem1)
+}
+sentimentbydem2
+
+mean(sentimentbydem2)
+
+regimedat$regtype<-0
+regimedat$regtype[scorevec<= 47]<- "democracy"
+regimedat$regtype[scorevec> 47]<- "mixed"
+regimedat$regtype[scorevec>=111]<- "autocracy"
+regtype2<- c("autocracy", "mixed", "democracy")
+regimedatbroad<- as.data.frame(regtype2)
+regimedatbroad$sentiment <- 0
+regimedatbroad$sentiment[1]<- mean(sentimentbyaut2)
+regimedatbroad$sentiment[2]<- mean(sentimentbymixed2)
+regimedatbroad$sentiment[3]<- mean(sentimentbydem2)
+ggplot(data=regimedatbroad, aes(x=regtype2, y=sentiment, fill=regtype2)) +
+  geom_bar(stat="identity")+xlab("Regime Type") + ylab("Positivity Ratio")+ ggtitle("Positivity Ratio for Emails Sent by Hillary Clinton by Regime type of Countries Mentioned")+
+  theme(legend.position = "none")+ ylim(c(0,1))
+```
